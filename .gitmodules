@@ -1,0 +1,4 @@
+[submodule "crypto_rules"]
+	path = crypto_rules
+	url = git@github.com:scanoss/crypto_rules.git
+	branch = main
