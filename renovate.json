@@ -6,4 +6,5 @@
       "matchFileNames": [".tekton/**"],
       "automerge": true
     }
+  ]
 }
