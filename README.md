@@ -2,5 +2,5 @@
 
 ## Introduction
 
-Downstream repository to build an image with crypto graphic rules from <git@github.com:scanoss/crypto_rules.git>
+Downstream repository to build an image with proprietary crypto rules from <https://github.com/scanoss/crypto_rules/>
 
