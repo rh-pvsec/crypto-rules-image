@@ -173,6 +173,8 @@ spec:
       workspaces:
       - name: basic-auth
         workspace: git-auth
+      - name: ssh-directory
+        value: custom-ssh-workspace
     - name: prefetch-dependencies
       params:
       - name: input
@@ -544,4 +546,7 @@ spec:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
+  - name: custom-ssh-workspace
+    secret:
+      secretName: crypto-rules-image-github-ssh-clone
 status: {}
