@@ -162,6 +162,8 @@ spec:
         value: $(params.output-image).git
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: logLevel
+        value: debug
       runAfter:
       - init
       taskRef:
