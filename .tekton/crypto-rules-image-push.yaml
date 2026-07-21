@@ -173,8 +173,6 @@ spec:
       workspaces:
       - name: basic-auth
         workspace: git-auth
-      - name: ssh-directory
-        workspace: custom-ssh-workspace
     - name: prefetch-dependencies
       params:
       - name: input
@@ -526,7 +524,7 @@ spec:
         - name: name
           value: rpms-signature-scan
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan:0.2@sha256:a1b2ca638f14d7ee9e4a181d4a15e597fcb6278bce9289e76937e458d884cbd6
+          value: quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan:0.2@sha256:53678a169a41152bb6a4ea69d2a345fff8124e857b4146bf9ba45a4f0385a8bb
         - name: kind
           value: task
         resolver: bundles
@@ -546,7 +544,4 @@ spec:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
-  - name: custom-ssh-workspace
-    secret:
-      secretName: crypto-rules-image-github-ssh-clone
 status: {}
