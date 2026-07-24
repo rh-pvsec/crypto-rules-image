@@ -12,5 +12,5 @@ LABEL name="crypto_rules" \
     maintainer="exd-guild-security@redhat.com" \
     distribution-scope="public" \
     url="https://github.com/rh-pvsec/crypto_rules-image" \
-    vendor="Red Hat, Inc."
-
+    vendor="Red Hat, Inc." \
+    release="0.1"
