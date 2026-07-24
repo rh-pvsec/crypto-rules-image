@@ -178,6 +178,22 @@ spec:
         workspace: git-auth
       - name: ssh-directory
         workspace: custom-ssh-workspace
+    - name: generate-labels
+      params:
+        - name: label-templates
+          value:
+              - "version=$SOURCE_DATE_EPOCH"
+        - name: source-date-epoch
+          value: '$(tasks.clone-repository.results.commit-timestamp)'
+      runAfter:
+        - clone-repository
+      taskRef:
+        params:
+          - name: name
+            value: generate-labels
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-generate-labels:0.1@sha256:0068fe8b3c5d010daee5a922781a74cfb82251e775c260d14d9e50dd1a7aca65
+        resolver: bundles
     - name: prefetch-dependencies
       params:
       - name: input
@@ -247,6 +263,9 @@ spec:
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
+      - name: LABELS
+        value:
+          - $(tasks.generate-labels.results.labels[*])
       runAfter:
       - prefetch-dependencies
       taskRef:
