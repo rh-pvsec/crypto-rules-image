@@ -1,6 +1,7 @@
 FROM scratch
 
-COPY crypto_rules/semgrep-rules /crypto_rules/semgrep-rules
+# Dest path is /rules/<rules overlay name>/semgrep-rules
+COPY crypto_rules/semgrep-rules /rules/crypto_rules/semgrep-rules
 
 LABEL name="crypto_rules" \
     com.redhat.component="crypto_rules" \
