@@ -4,11 +4,17 @@
 # This file configures fullsend for per-repo installation mode.
 # See ADR 0033 for details.
 version: "1"
-roles:
-    - triage
-    - coder
-    - review
-    - fix
+# Agent roster. Names match the stage names the dispatcher emits
+# (triage, code, review, fix, retro, prioritize). Unlisted agents are
+# enabled by default, so only the ones we opt out of are listed here.
+# This replaces the former `roles:` key, which fullsend v0.51.0 removed;
+# it was still present but no longer read, so it no longer described
+# which agents actually ran.
+agents:
+    - name: retro
+      enabled: false
+    - name: prioritize
+      enabled: false
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
