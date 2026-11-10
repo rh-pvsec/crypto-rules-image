@@ -28,7 +28,11 @@ bot-authored pull request:
   the eligibility check for any bot other than the Fullsend coder bot unless
   the PR carries the `fullsend-fix` label.
 
-Triage and code act on issues, not pull requests, so neither runs on a bot PR.
+Code never runs on a pull request — the dispatcher only routes `/fs-code` when
+the comment is on an issue. Triage runs on a pull request only when a permitted
+user comments `/fs-triage`: that command is gated on authorization and a
+non-bot commenter, but not on the comment being an issue, so it is not limited
+to issues the way code is.
 
 ### Labels the dispatcher acts on
 
@@ -41,10 +45,42 @@ Only these labels affect routing:
 Any other `fullsend-*` label is inert. In particular, **there is no
 label that skips review.** `renovate.json` used to add a `fullsend-skip` label
 to every Renovate PR; the dispatcher never recognised it, so review ran anyway,
-and the label has been removed. Per-PR review opt-out is tracked upstream in
+and the label has been removed. Label-based review skip is tracked upstream in
 [fullsend-ai/fullsend#7401](https://github.com/fullsend-ai/fullsend/issues/7401).
 
-The only repo-side controls that work today are repo-wide: `kill_switch` in
-`.fullsend/config.yaml` stops every agent, and an `agents` entry with
-`enabled: false` in the same file turns one agent off — for human pull
-requests as well as bot ones.
+### Repo-side controls
+
+Two controls in `.fullsend/config.yaml` are repo-wide:
+
+- `kill_switch` stops every agent.
+- An `agents` entry with `enabled: false` turns one agent off — for human pull
+  requests as well as bot ones. The entry must also carry a `name` matching the
+  agent/stage name (`review`, `fix`, `triage`, `code`, `retro`, `prioritize`);
+  a disabled entry without a `name` fails the dispatcher's config validation
+  and blocks dispatch entirely. This repo's `.fullsend/config.yaml` has no
+  `agents:` key yet, so the block has to be added:
+
+  ```yaml
+  agents:
+    - name: review
+      enabled: false
+  ```
+
+A third control decides per event rather than repo-wide: a CEL `trigger:` on
+the `review` entry in `.fullsend/config.yaml`
+([fullsend-ai/fullsend#8726](https://github.com/fullsend-ai/fullsend/issues/8726),
+shipped in v0.54.0). The expression is evaluated against the event and decides
+whether review starts; `event.actor.kind` (`"human"` or `"bot"`) and
+`event.state.labels` are available, so
+
+```yaml
+agents:
+  - name: review
+    trigger: event.actor.kind == "human"
+```
+
+keeps review off bot pull requests while leaving it on for human ones. Two
+caveats: the trigger is read from the default branch, so a pull request cannot
+change its own routing; and the dispatcher's `cel-*` steps are
+`continue-on-error`, so a CEL evaluation or CLI-install failure falls back to
+the default route and review runs.
