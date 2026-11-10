@@ -20,13 +20,14 @@ pinned today (v0.54.0); re-check it against the pin after a version bump.
 Renovate and MintMaker pull requests are routed the same way as any other
 bot-authored pull request:
 
-- **review** — on `opened`, `synchronize` and `ready_for_review`. A PR whose
-  author login ends in `[bot]` is dispatched to review unconditionally, so
-  every push to a rolling Renovate branch starts a fresh review.
-- **retro** — when the PR is closed.
+- **review** — on `opened`, `synchronize` and `ready_for_review`. A pull
+  request whose author login ends in `[bot]` is dispatched to review
+  unconditionally, so every push to a rolling Renovate branch starts a fresh
+  review.
+- **retro** — when the pull request is closed.
 - **fix** — dispatched when the review agent requests changes, but it stops at
   the eligibility check for any bot other than the Fullsend coder bot unless
-  the PR carries the `fullsend-fix` label.
+  the pull request carries the `fullsend-fix` label.
 
 ### Slash commands on a pull request
 
@@ -42,21 +43,30 @@ rest are available on one, subject to the commenter's permission:
 | `/fs-retro` | yes — not restricted to issues | write or higher |
 | `/fs-prioritize` | yes — not restricted to issues | write or higher |
 | `/fs-code` | no — issues only | write or higher |
+| `/fs-fix-stop` | yes | write or higher, or the pull request author |
+
+`/fs-fix-stop` is the one command above the upstream dispatcher does not
+handle. The `stop-fix` job in this repo's own
+`.github/workflows/fullsend.yaml` answers it: the comment body must be
+exactly `/fs-fix-stop`, and the job adds the `fullsend-no-fix` label
+described below.
 
 ### Labels the dispatcher acts on
 
 Only these labels affect routing:
 
 - `ready-for-triage`, `ready-to-code`, `ready-for-review` — dispatch triggers.
-- `fullsend-no-fix` — suppresses the bot-triggered fix agent on a PR.
-- `fullsend-fix` — opts a PR in to the bot-triggered fix agent. On a
+- `fullsend-no-fix` — suppresses the bot-triggered fix agent on a pull
+  request. Commenting `/fs-fix-stop` adds it; it can also be added by hand.
+- `fullsend-fix` — opts a pull request in to the bot-triggered fix agent. On a
   human-authored pull request the author must also hold write access; the
   label on its own is not enough there.
 
 Any other `fullsend-*` label is inert. In particular, **there is no
 label that skips review.** `renovate.json` used to add a `fullsend-skip` label
-to every Renovate PR; the dispatcher never recognised it, so review ran anyway,
-and the label has been removed. Label-based review skip is tracked upstream in
+to every Renovate pull request; the dispatcher never recognised it, so review
+ran anyway, and the label has been removed. Label-based review skip is
+tracked upstream in
 [fullsend-ai/fullsend#7401](https://github.com/fullsend-ai/fullsend/issues/7401).
 
 ### Repo-side controls
@@ -96,13 +106,25 @@ agents:
     trigger: event.entity.kind == "change_proposal" && event.transition.kind in ["opened", "synchronized", "marked_ready"] && event.actor.kind == "human"
 ```
 
-keeps review off bot pull requests while leaving it on for human ones.
+keeps review off bot pull requests, and keeps it on for human ones that are
+opened, pushed to or marked ready.
 
-The `entity.kind` and `transition.kind` guards are not decoration. A trigger is
-also evaluated for pull request `labeled`/`unlabeled` events and for pull
-request comments, so a bare `event.actor.kind == "human"` would start reviews
-on human label edits and human PR comments — dispatches the default rules do
-not make.
+It does not preserve every human review route this file documents. The
+dispatcher also evaluates the trigger on pull request `labeled`/`unlabeled`
+events and on pull request comments, and a `skip` decision clears the stage
+the default rules had already chosen. The `transition.kind` list above
+matches neither of those, so the example above *also* switches off the two
+other human review routes described earlier: adding the `ready-for-review`
+label, and commenting `/fs-review`. Losing `/fs-review` removes the manual
+re-review escape hatch as well. To keep those routes, extend the expression
+with `label_changed` and `comment_added` clauses; the upstream CEL trigger
+reference gives the form for both.
+
+The `entity.kind` and `transition.kind` guards are still worth keeping. A
+bare `event.actor.kind == "human"` trigger would start a review on every
+human label edit and every human pull request comment — far wider than the
+`ready-for-review` label add and `/fs-review` comment that the default rules
+dispatch on.
 
 Setting any `trigger:` on the `review` entry also changes behaviour in ways
 worth weighing before adopting it:
@@ -114,6 +136,8 @@ worth weighing before adopting it:
 - On `opened`, `synchronize` and `ready_for_review` the identity checked
   becomes the event sender rather than the pull request author.
 - Bots without a registered Fullsend role are skipped.
+- A maintainer's push to an outside contributor's fork pull request is not
+  reviewed under the default rules, but is reviewed once a trigger is set.
 - The trigger is read from the pull request's base branch (the default branch
   for ordinary pull requests), so a pull request cannot change its own routing.
 - The dispatcher's `cel-*` steps are `continue-on-error`, so a CEL evaluation
