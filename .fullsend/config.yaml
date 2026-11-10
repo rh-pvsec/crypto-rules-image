@@ -4,26 +4,12 @@
 # This file configures fullsend for per-repo installation mode.
 # See ADR 0033 for details.
 version: "1"
-# Agent roster for the dispatcher's stages (triage, code, review, fix,
-# retro, prioritize). This is a deny-list: a stage runs unless a
-# matching entry sets `enabled: false`, so unlisted agents stay
-# enabled. A full allow-list is impractical, because validation
-# rejects an enabled entry that carries only a name.
-#
-# Residual risks, each of which fails open silently:
-#   - Names are matched by exact (downcased) equality and are never
-#     checked against real stage names, so a typo just runs the stage.
-#     After editing, confirm the intended stage reports skipped in the
-#     dispatch run log.
-#   - A stage added by a future upstream release is not listed here and
-#     runs by default. Re-check this list against the dispatcher when
-#     bumping the pinned fullsend version.
-#   - `fullsend repos install` / `converge` still write a `roles:` key
-#     holding the upstream default roster, which contradicts this list.
-#     Re-check this file after any scaffold run. (v0.51.0 removed the
-#     `Check role is enabled` gate from the dispatcher, not the
-#     `roles:` key itself — the key is still written and validated, it
-#     is simply no longer read when deciding which stages run.)
+# Agent roster. Deny-list only: a stage runs unless an entry sets
+# `enabled: false`; the gate has no allow-list mode and fails open
+# silently, so confirm skips in the dispatch run log and re-check this
+# list on each fullsend pin bump. Presence of this key also toggles the
+# dispatcher's CLI-install chain.
+# See issue #39 for migration notes and the full residual-risk list.
 agents:
     - name: retro
       enabled: false
