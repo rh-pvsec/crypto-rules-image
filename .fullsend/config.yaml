@@ -10,6 +10,29 @@ version: "1"
 # This replaces the former `roles:` key, which fullsend v0.51.0 removed;
 # it was still present but no longer read, so it no longer described
 # which agents actually ran.
+#
+# This is a deny-list and the dispatcher's enablement check fails open:
+# a stage runs unless a matching entry sets `enabled: false`. A missing
+# config, a null `agents`, an unlisted stage, or a yq error all fall
+# through to running the stage. That is accepted deliberately — an
+# allow-list would need a synthetic tuning key (runtime, model, effort,
+# subagents or trigger) on every enabled entry, because validation
+# rejects an enabled entry carrying only a name.
+#
+# Residual risk: a stage introduced by a future upstream release is not
+# covered by the list below and would run by default. When bumping the
+# pinned fullsend version, re-check this list against the new
+# dispatcher and add an explicit opt-out for anything unwanted. Entry
+# names are matched by exact (downcased) string equality and are never
+# validated against real stage names, so a typo fails open silently —
+# after editing, confirm the intended stage reports skipped in the run
+# log.
+#
+# Declaring any `agents:` entry also makes the harness-dispatch job
+# install the fullsend CLI and run the dispatch command on every
+# forwarded event. Neither entry below sets a source or trigger, so
+# dispatch enumerates nothing and emits an empty matrix, which leaves
+# the harness-run job skipped.
 agents:
     - name: retro
       enabled: false
