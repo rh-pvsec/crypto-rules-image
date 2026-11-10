@@ -7,8 +7,10 @@ version: "1"
 # Agent roster. Deny-list only: a stage runs unless an entry sets
 # `enabled: false`; the gate has no allow-list mode and fails open
 # silently, so confirm skips in the dispatch run log and re-check this
-# list on each fullsend pin bump. Presence of this key also toggles the
-# dispatcher's CLI-install chain.
+# list on any PR that bumps the fullsend pin. The gate governs only the
+# route-gated stage jobs; it does not gate harness-run. Presence of this
+# key also toggles the dispatcher's CLI-install chain, which this repo
+# previously skipped entirely.
 # See issue #39 for migration notes and the full residual-risk list.
 agents:
     - name: retro
