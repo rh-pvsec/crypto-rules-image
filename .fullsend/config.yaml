@@ -4,11 +4,19 @@
 # This file configures fullsend for per-repo installation mode.
 # See ADR 0033 for details.
 version: "1"
-roles:
-    - triage
-    - coder
-    - review
-    - fix
+# Agent roster. Deny-list only: a stage runs unless an entry sets
+# `enabled: false`; the gate has no allow-list mode and fails open
+# silently, so confirm skips in the dispatch run log and re-check this
+# list on any PR that bumps the fullsend pin. The gate governs only the
+# route-gated stage jobs; it does not gate harness-run. Presence of this
+# key also toggles the dispatcher's CLI-install chain, which this repo
+# previously skipped entirely.
+# See issue #39 for migration notes and the full residual-risk list.
+agents:
+    - name: retro
+      enabled: false
+    - name: prioritize
+      enabled: false
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
