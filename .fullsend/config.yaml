@@ -4,52 +4,26 @@
 # This file configures fullsend for per-repo installation mode.
 # See ADR 0033 for details.
 version: "1"
-# Agent roster. Names match the stage names the dispatcher emits
-# (triage, code, review, fix, retro, prioritize). Unlisted agents are
-# enabled by default, so only the ones we opt out of are listed here.
-# This replaces the former `roles:` key, which fullsend v0.51.0 removed;
-# it was still present but no longer read, so it no longer described
-# which agents actually ran.
+# Agent roster for the dispatcher's stages (triage, code, review, fix,
+# retro, prioritize). This is a deny-list: a stage runs unless a
+# matching entry sets `enabled: false`, so unlisted agents stay
+# enabled. A full allow-list is impractical, because validation
+# rejects an enabled entry that carries only a name.
 #
-# This is a deny-list and the dispatcher's enablement check fails open:
-# a stage runs unless a matching entry sets `enabled: false`. A missing
-# config, a null `agents`, an unlisted stage, or a yq error all fall
-# through to running the stage. That is accepted deliberately — an
-# allow-list would need a synthetic tuning key (runtime, model, effort,
-# subagents or trigger) on every enabled entry, because validation
-# rejects an enabled entry carrying only a name.
-#
-# Residual risk: a stage introduced by a future upstream release is not
-# covered by the list below and would run by default. When bumping the
-# pinned fullsend version, re-check this list against the new
-# dispatcher and add an explicit opt-out for anything unwanted. Entry
-# names are matched by exact (downcased) string equality and are never
-# validated against real stage names, so a typo fails open silently —
-# after editing, confirm the intended stage reports skipped in the run
-# log.
-#
-# An `agents:` block with at least one `name:` entry — or any
-# `source:` key anywhere in this file whose value is an http(s) URL —
-# makes the harness-dispatch job install the fullsend CLI and run the
-# dispatch command on every forwarded event. (That second condition is
-# a plain grep over the raw file, so it is deliberately not spelled out
-# literally here: writing the pattern out would itself trip the gate.)
-# The block below meets the first condition, so this
-# install-and-dispatch chain — previously skipped entirely on this
-# repo, since the old config matched neither branch — now runs
-# unconditionally. None of those steps set
-# `continue-on-error`, and the dispatch step runs under
-# `set -euo pipefail`, so an install or CLI failure now fails the job
-# on events that previously no-opped.
-#
-# Neither entry below sets a source or trigger, so dispatch is expected
-# to enumerate nothing and emit an empty matrix. That outcome depends
-# on CLI internals and is not verifiable from the workflow file; what
-# the workflow does guarantee is that harness-run is gated on a
-# non-null `include[0]`, so an empty matrix leaves it skipped. Confirm
-# on the first post-merge run that the dispatch step exits 0 and emits
-# `{"include":[]}` and that harness-run reports skipped; if it does
-# not, drop this block and disable the two stages another way.
+# Residual risks, each of which fails open silently:
+#   - Names are matched by exact (downcased) equality and are never
+#     checked against real stage names, so a typo just runs the stage.
+#     After editing, confirm the intended stage reports skipped in the
+#     dispatch run log.
+#   - A stage added by a future upstream release is not listed here and
+#     runs by default. Re-check this list against the dispatcher when
+#     bumping the pinned fullsend version.
+#   - `fullsend repos install` / `converge` still write a `roles:` key
+#     holding the upstream default roster, which contradicts this list.
+#     Re-check this file after any scaffold run. (v0.51.0 removed the
+#     `Check role is enabled` gate from the dispatcher, not the
+#     `roles:` key itself — the key is still written and validated, it
+#     is simply no longer read when deciding which stages run.)
 agents:
     - name: retro
       enabled: false
