@@ -13,7 +13,8 @@ This repository is enrolled in [Fullsend](https://fullsend.dev) for automated is
 `.github/workflows/fullsend.yaml` is a shim that forwards GitHub events to the
 upstream `reusable-dispatch.yml` workflow at a pinned revision, and that pinned
 revision decides which agent runs. The summary below describes the revision
-pinned today (v0.54.0); re-check it against the pin after a version bump.
+pinned today, `90b7310` (v0.54.0); re-check it against the pin after a version
+bump, and treat it as stale if the pinned SHA in the shim no longer matches.
 
 ### What runs on a bot pull request
 
@@ -92,53 +93,21 @@ Two controls in `.fullsend/config.yaml` are repo-wide:
       enabled: false
   ```
 
-A third control decides per event rather than repo-wide: a CEL `trigger:` on
-the `review` entry in `.fullsend/config.yaml`
-([fullsend-ai/fullsend#8726](https://github.com/fullsend-ai/fullsend/issues/8726),
-shipped in v0.54.0). The expression is evaluated against the event and decides
-whether review starts. `event.entity.kind`, `event.transition.kind`,
-`event.actor.kind` (`"human"` or `"bot"`) and `event.state.labels` are among
-the available fields, so
+A third control decides per event rather than repo-wide: a CEL `trigger:`
+expression on the `review` entry in `.fullsend/config.yaml`
+([fullsend-ai/fullsend#8726](https://github.com/fullsend-ai/fullsend/issues/8726)),
+available at the pinned revision. It is evaluated against each event and can
+keep review off bot pull requests while leaving it on for human ones.
 
-```yaml
-agents:
-  - name: review
-    trigger: event.entity.kind == "change_proposal" && event.transition.kind in ["opened", "synchronized", "marked_ready"] && event.actor.kind == "human"
-```
-
-keeps review off bot pull requests, and keeps it on for human ones that are
-opened, pushed to or marked ready.
-
-It does not preserve every human review route this file documents. The
-dispatcher also evaluates the trigger on pull request `labeled`/`unlabeled`
-events and on pull request comments, and a `skip` decision clears the stage
-the default rules had already chosen. The `transition.kind` list above
-matches neither of those, so the example above *also* switches off the two
-other human review routes described earlier: adding the `ready-for-review`
-label, and commenting `/fs-review`. Losing `/fs-review` removes the manual
-re-review escape hatch as well. To keep those routes, extend the expression
-with `label_changed` and `comment_added` clauses; the upstream CEL trigger
-reference gives the form for both.
-
-The `entity.kind` and `transition.kind` guards are still worth keeping. A
-bare `event.actor.kind == "human"` trigger would start a review on every
-human label edit and every human pull request comment — far wider than the
-`ready-for-review` label add and `/fs-review` comment that the default rules
-dispatch on.
-
-Setting any `trigger:` on the `review` entry also changes behaviour in ways
-worth weighing before adopting it:
-
-- Pushes from the fix agent stop starting a re-review until
-  [fullsend-ai/fullsend#8329](https://github.com/fullsend-ai/fullsend/issues/8329)
-  ships, which breaks the review → fix → re-review loop. This repo does
-  dispatch `fix` on bot pull requests, so the loop is live here.
-- On `opened`, `synchronize` and `ready_for_review` the identity checked
-  becomes the event sender rather than the pull request author.
-- Bots without a registered Fullsend role are skipped.
-- A maintainer's push to an outside contributor's fork pull request is not
-  reviewed under the default rules, but is reviewed once a trigger is set.
-- The trigger is read from the pull request's base branch (the default branch
-  for ordinary pull requests), so a pull request cannot change its own routing.
-- The dispatcher's `cel-*` steps are `continue-on-error`, so a CEL evaluation
-  or CLI-install failure falls back to the default route and review runs.
+A trigger is not a drop-in narrowing of the default rules: it replaces them
+for review, so an expression that does not match a route described above
+(the `ready-for-review` label, a `/fs-review` comment) silently turns that
+route off, and it changes how fix-agent pushes, fork pull requests and
+sender-versus-author identity are handled. Note also that the two failure
+modes differ — a failing `cel-*` step (config checkout, CLI install, an
+expression that does not compile) leaves the default route in place and
+review still runs, but an expression that compiles and then fails to
+evaluate against the event returns a `skip`, which clears the stage so
+review does **not** run. Consult the upstream CEL trigger reference at the
+pinned revision and validate any expression against every event it must
+cover before relying on it.
