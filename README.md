@@ -26,9 +26,11 @@ bot-authored pull request:
   unconditionally, so every push to a rolling Renovate branch starts a fresh
   review.
 - **retro** — when the pull request is closed.
-- **fix** — dispatched when the review agent requests changes, but it stops at
-  the eligibility check for any bot other than the Fullsend coder bot unless
-  the pull request carries the `fullsend-fix` label.
+- **fix** — dispatched when the review agent requests changes. For any bot
+  other than the Fullsend coder bot, unless the pull request carries the
+  `fullsend-fix` label, the job does not skip quietly: its eligibility check
+  exits non-zero and the Fix job fails, leaving a failed check on the pull
+  request.
 
 ### Slash commands on a pull request
 
@@ -56,7 +58,16 @@ described below.
 
 Only these labels affect routing:
 
-- `ready-for-triage`, `ready-to-code`, `ready-for-review` — dispatch triggers.
+- `ready-for-triage` — dispatches triage on an issue. No permission check on
+  whoever applied the label.
+- `ready-for-review` — dispatches review on a pull request. No permission
+  check on whoever applied the label, on either the issue or the
+  `pull_request_target` label path.
+- `ready-to-code` — dispatches code on an issue. This is the only label that
+  is gated, and it accepts either a labeller with write access **or** any
+  sender whose login ends in `[bot]`. So while a `/fs-*` comment from a bot is
+  always ignored, a bot applying this label does start the write-capable code
+  agent.
 - `fullsend-no-fix` — suppresses the bot-triggered fix agent on a pull
   request. Commenting `/fs-fix-stop` adds it; it can also be added by hand.
 - `fullsend-fix` — opts a pull request in to the bot-triggered fix agent. On a
@@ -103,11 +114,23 @@ A trigger is not a drop-in narrowing of the default rules: it replaces them
 for review, so an expression that does not match a route described above
 (the `ready-for-review` label, a `/fs-review` comment) silently turns that
 route off, and it changes how fix-agent pushes, fork pull requests and
-sender-versus-author identity are handled. Note also that the two failure
-modes differ — a failing `cel-*` step (config checkout, CLI install, an
-expression that does not compile) leaves the default route in place and
-review still runs, but an expression that compiles and then fails to
-evaluate against the event returns a `skip`, which clears the stage so
-review does **not** run. Consult the upstream CEL trigger reference at the
-pinned revision and validate any expression against every event it must
-cover before relying on it.
+sender-versus-author identity are handled. Three failure modes differ, and
+only the first is benign:
+
+- A `cel-*` step that fails operationally (config checkout, CLI install)
+  leaves the default route in place, and review still runs.
+- An expression that compiles but then fails to evaluate against the event
+  is returned as a `skip`, which clears the stage, so review does **not**
+  run — with no failed step to make that visible.
+- An expression that does not compile, or does not return a boolean, still
+  merges. Routing falls back to the default route, but afterwards *every*
+  agent run in the repository fails with `invalid agent config: agents[N]
+  (<name>): invalid trigger` — triage, code, fix, retro and prioritize as
+  well as review, because each run validates the whole `agents:` list.
+
+Run `fullsend lint` from the repository root before merging a trigger: it
+fails when a trigger does not compile or does not return a boolean, which is
+the pre-merge guard against that third case. It does not evaluate the trigger
+against events, so also consult the upstream CEL trigger reference at the
+pinned revision and check any expression against every event it must cover
+before relying on it.
