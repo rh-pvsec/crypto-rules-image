@@ -28,11 +28,28 @@ version: "1"
 # after editing, confirm the intended stage reports skipped in the run
 # log.
 #
-# Declaring any `agents:` entry also makes the harness-dispatch job
-# install the fullsend CLI and run the dispatch command on every
-# forwarded event. Neither entry below sets a source or trigger, so
-# dispatch enumerates nothing and emits an empty matrix, which leaves
-# the harness-run job skipped.
+# An `agents:` block with at least one `name:` entry — or any
+# `source:` key anywhere in this file whose value is an http(s) URL —
+# makes the harness-dispatch job install the fullsend CLI and run the
+# dispatch command on every forwarded event. (That second condition is
+# a plain grep over the raw file, so it is deliberately not spelled out
+# literally here: writing the pattern out would itself trip the gate.)
+# The block below meets the first condition, so this
+# install-and-dispatch chain — previously skipped entirely on this
+# repo, since the old config matched neither branch — now runs
+# unconditionally. None of those steps set
+# `continue-on-error`, and the dispatch step runs under
+# `set -euo pipefail`, so an install or CLI failure now fails the job
+# on events that previously no-opped.
+#
+# Neither entry below sets a source or trigger, so dispatch is expected
+# to enumerate nothing and emit an empty matrix. That outcome depends
+# on CLI internals and is not verifiable from the workflow file; what
+# the workflow does guarantee is that harness-run is gated on a
+# non-null `include[0]`, so an empty matrix leaves it skipped. Confirm
+# on the first post-merge run that the dispatch step exits 0 and emits
+# `{"include":[]}` and that harness-run reports skipped; if it does
+# not, drop this block and disable the two stages another way.
 agents:
     - name: retro
       enabled: false
