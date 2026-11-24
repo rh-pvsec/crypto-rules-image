@@ -3,6 +3,9 @@
   "addLabels": [
     "fullsend-skip"
   ],
+  "pre-commit": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "description": "Automerge Konflux pipeline references",
